@@ -104,3 +104,21 @@ def worst [∀ x, Fintype (ω x)] (f : Comp ι ω s α) : ℕ := match f with
 | .pure' _ => 0
 | .sample' _ f => Finset.univ.sup fun x ↦ (f x).worst
 | .query' _ _ _ f => 1 + Finset.univ.sup fun x ↦ (f x).worst
+
+/-- Custom recursor to use `pure` instead of `pure'`. -/
+@[induction_eliminator]
+def induction {motive : Comp ι ω s α → Sort*}
+    (pure : ∀ a, motive (pure a))
+    (sample' : ∀ {n} (p : Prob (Fin n)) f, (∀ i, motive (f i)) → motive (sample' p f))
+    (query' : ∀ i hi x f, (∀ i, motive (f i)) → motive (query' i hi x f)) :
+    ∀ f, motive f :=
+  Comp.rec pure sample' query'
+
+/-- Custom recursor to use `pure` instead of `pure'`. -/
+@[induction_eliminator]
+def _root_.BComp.induction {motive : BComp ι s α → Sort*}
+    (pure : ∀ a, motive (pure a))
+    (sample' : ∀ {n} (p : Prob (Fin n)) f, (∀ i, motive (f i)) → motive (sample' p f))
+    (query' : ∀ i hi x f, (∀ i, motive (f i)) → motive (query' i hi x f)) :
+    ∀ f, motive f :=
+  Comp.rec pure sample' query'

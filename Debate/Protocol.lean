@@ -100,7 +100,7 @@ def step (alice : Alice ι) (bob : Bob ι) (vera : Vera ι) (y : ι) : BComp ι 
 
 /-- Process a computation, replacing oracle queries with debate steps -/
 def steps (alice : Alice ι) (bob : Bob ι) (vera : Vera ι) : BComp ι s α → BComp ι AllIds (State α)
-| .pure' x => pure' (.ok x)
+| .pure' x => pure (.ok x)
 | .sample' p f => .sample' p fun y ↦ steps alice bob vera (f y)
 | .query' _ _ y f => do match ← step alice bob vera y with
   | .ok x => steps alice bob vera (f x)

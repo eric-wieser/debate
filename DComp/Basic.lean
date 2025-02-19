@@ -18,6 +18,9 @@ variable {α β γ : Type}
 
 namespace DComp
 
+@[simp]
+lemma pure'_eq : (pure' : α → DComp ι ω s α) = pure := rfl
+
 lemma map_eq (f : α → β) (x : DComp ι ω s α) : f <$> x = x >>= (fun x ↦ pure (f x)) := rfl
 
 /-- `DComp` is a lawful monad -/
@@ -36,13 +39,13 @@ instance : LawfulMonad (DComp ι ω s) := LawfulMonad.mk'
     · rfl
     · simp only [bind', h])
 
-/-- Running a `pure'` unwraps it` -/
-@[simp] lemma value_pure' (x : α) (o : I → (x : ι) → ω x) :
-    (pure' x : DComp ι ω s α).value o = x := by
+/-- Running a `pure` unwraps it` -/
+@[simp] lemma value_pure (x : α) (o : I → (x : ι) → ω x) :
+    (pure x : DComp ι ω s α).value o = x := by
   simp only [value, run, map_pure]
 
 -- The definition of `DComp.bind` as `simp` lemmas
-@[simp] lemma pure'_bind (x : α) (f : α → DComp ι ω s β) : (pure' x : DComp ι ω s α) >>= f = f x :=
+@[simp] lemma pure_bind (x : α) (f : α → DComp ι ω s β) : (pure x : DComp ι ω s α) >>= f = f x :=
   rfl
 @[simp] lemma query'_bind (o : I) (m : o ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
     (g : α → DComp ι ω s β) : query' o m y f >>= g = .query' o m y fun x ↦ (f x) >>= g := rfl
@@ -52,17 +55,13 @@ instance : LawfulMonad (DComp ι ω s) := LawfulMonad.mk'
     f <$> query' i m y g = query' i m y fun x ↦ f <$> (g x) := rfl
 
 -- The definition of `DComp.allow` as `simp` lemmas
-@[simp] lemma allow_pure' (x : α) (st : s ⊆ t) : (pure' x : DComp ι ω s α).allow st = pure x := rfl
+@[simp] lemma allow_pure (x : α) (st : s ⊆ t) : (pure x : DComp ι ω s α).allow st = pure x := rfl
 @[simp] lemma allow_query' (i : I) (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α) (st : s ⊆ t) :
     (query' i m y f).allow st = query' i (st m) y fun x ↦ (f x).allow st := rfl
 
 /-!
 ## `DComp.run` commutes with various things
 -/
-
-@[simp] lemma run_pure' (x : α) (o : I → (x : ι) → ω x) :
-    (.pure' x : DComp ι ω s α).run o = (x, fun _ ↦ 0) := by
-  simp only [run, map_pure]
 
 @[simp] lemma run_pure (x : α) (o : I → (x : ι) → ω x) :
     (pure x : DComp ι ω s α).run o = (x, fun _ ↦ 0) := by
@@ -78,7 +77,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
 @[simp] lemma run_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → (x : ι) → ω x) :
     (f >>= g).run o = let (x,c) := f.run o; let (y,c') := (g x).run o; (y, c + c') := by
   induction' f with x j m y f h
-  · simp only [pure'_bind, run_pure', Pi.add_def, zero_add, Prod.mk.eta]
+  · simp only [pure_bind, run_pure, Pi.add_def, zero_add, Prod.mk.eta]
   · have e : ∀ h, bind' h g = h >>= g := fun _ ↦ rfl
     simp only [run_query', query'_bind, e, h, bind_assoc, Prob.map_eq]
     refine congr_arg₂ _ rfl ?_
@@ -88,7 +87,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
 @[simp] lemma run_allow (f : DComp ι ω s α) (st : s ⊆ t) (o : I → (x : ι) → ω x) :
     (f.allow st).run o = f.run o := by
   induction' f with x j _ y f h
-  · simp only [allow, run_pure, run_pure']
+  · simp only [allow, run_pure]
   · simp only [allow_query', run_query', h]
 
 @[simp] lemma run_allow_all (f : DComp ι ω s α) (o : I → (x : ι) → ω x) :
@@ -109,16 +108,6 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
     (pure x : DComp ι ω s α).cost' o i = 0 := by
   simp only [cost', run_pure]
 
-/-- `pure'` is free -/
-@[simp] lemma cost_pure' (x : α) (o : I → (x : ι) → ω x) (i : I) :
-    (pure' x : DComp ι ω s α).cost o i = 0 := by
-  simp only [cost, run]
-
-/-- `pure'` is free -/
-@[simp] lemma cost'_pure' (x : α) (o : I → (x : ι) → ω x) (i : I) :
-    (pure' x : DComp ι ω s α).cost' o i = 0 := by
-  simp only [cost', run_pure']
-
 /-- `query'` costs one query, plus the rest -/
 @[simp] lemma cost_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
     (o : I → (x : ι) → ω x) (j : I) :
@@ -134,7 +123,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
 lemma cost_of_not_mem (f : DComp ι ω s α) (o : I → (x : ι) → ω x) {i : I} (is : i ∉ s) :
     f.cost o i = 0 := by
   induction' f with x j js y f h
-  · simp only [cost_pure']
+  · simp only [cost_pure]
   · simp only [cost_query', h, ite_self, add_zero]
     by_cases ij : i = j
     · simp only [ij] at is; simp only [js, not_true_eq_false] at is
@@ -144,7 +133,7 @@ lemma cost_of_not_mem (f : DComp ι ω s α) (o : I → (x : ι) → ω x) {i : 
 lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → (x : ι) → ω x) (i : I) :
     (f >>= g).cost o i = f.cost o i + (g (f.value o)).cost o i := by
   induction' f with x j m y f h
-  · simp only [bind, bind', cost_pure', value_pure', zero_add]
+  · simp only [bind, bind', cost_pure, value_pure, zero_add]
   · simp only [bind, bind'] at h
     simp only [bind, bind', cost_query', h, value, add_assoc, add_right_inj]
     apply congr_arg₂ _ rfl
@@ -159,7 +148,7 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
 @[simp] lemma cost_eq_zero {f : DComp ι ω s α} {i : I} (m : i ∉ s) (o : I → (x : ι) → ω x) :
     f.cost o i = 0 := by
   induction' f with x j mj y f h
-  · simp only [cost_pure']
+  · simp only [cost_pure]
   · simp only [cost_query', h, add_zero, ite_eq_right_iff, one_ne_zero, imp_false]
     intro e; rw [e] at m; exact m mj
 
@@ -179,9 +168,6 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
 ## `DComp.value` commutes with various things
 -/
 
-@[simp] lemma value_pure (x : α) (o : I → (x : ι) → ω x) : (pure x : DComp ι ω s α).value o = x := by
-  simp only [pure, value_pure']
-
 @[simp] lemma value_query' (i : I) (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
     (o : I → (x : ι) → ω x) : (query' i m y f).value o = (f (o i y)).value o := by
   simp only [value, run, bind_assoc]
@@ -193,7 +179,7 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
 @[simp] lemma value_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → (x : ι) → ω x) :
     (f >>= g).value o = (g (f.value o)).value o := by
   induction' f with x j m y f h
-  · simp only [pure'_bind, value_pure', pure_bind]
+  · simp only [pure_bind, value_pure, pure_bind]
   · simp only [query'_bind, value_query', h, bind_assoc]
 
 @[simp] lemma value_map (f : α → β) (g : DComp ι ω s α) (o : I → (x : ι) → ω x) :
@@ -207,7 +193,7 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
 @[simp] lemma value_allow (f : DComp ι ω s α) (st : s ⊆ t) (o : I → (x : ι) → ω x) :
     (f.allow st).value o = f.value o := by
   induction' f with x j m y f h
-  · simp only [allow, value_pure', value_pure]
+  · simp only [allow, value_pure, value_pure]
   · simp only [allow, value_query', h]
 
 @[simp] lemma value_allow_all (f : DComp ι ω s α) (o : I → (x : ι) → ω x) :
@@ -217,15 +203,12 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
 @[simp] lemma cost_allow (f : DComp ι ω s α) (st : s ⊆ t) (o : I → (x : ι) → ω x) (i : I) :
     (f.allow st).cost o i = f.cost o i := by
   induction' f with x j m y f h
-  · simp only [allow, cost_pure, cost_pure']
+  · simp only [allow, cost_pure, cost_pure]
   · simp only [allow, cost_query', h]
 
 @[simp] lemma cost_allow_all (f : DComp ι ω s α) (o : I → (x : ι) → ω x) (i : I) :
     f.allow_all.cost o i = f.cost o i := by
   apply cost_allow
-
-@[simp] lemma allow_pure (x : α) (st : s ⊆ t) : (pure x : DComp ι ω s α).allow st = pure x := by
-  simp only [allow]
 
 @[simp] lemma allow_all_pure (x : α) : (pure x : DComp ι ω s α).allow_all = pure x := by
   simp only [allow_all, allow_pure]
@@ -234,7 +217,7 @@ lemma cost_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) (o : I → 
     (f >>= g).allow st = f.allow st >>= fun x ↦ (g x).allow st := by
   have e : ∀ v, bind' v g = v >>= g := fun _ ↦ rfl
   induction' f with x j m y f h
-  · simp only [pure'_bind, allow, pure_bind]
+  · simp only [pure_bind, allow, pure_bind]
   · simp only [allow, e, h, query'_bind]
 
 @[simp] lemma allow_all_bind (f : DComp ι ω s α) (g : α → DComp ι ω s β) :

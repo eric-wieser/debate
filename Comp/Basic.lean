@@ -21,6 +21,9 @@ variable {α β γ : Type}
 
 namespace Comp
 
+@[simp]
+lemma pure'_eq : (pure' : α → Comp ι ω s α) = pure := rfl
+
 lemma map_eq (f : α → β) (x : Comp ι ω s α) : f <$> x = x >>= (λ x ↦ pure (f x)) := rfl
 
 /-- `Comp` is a lawful monad -/
@@ -42,12 +45,12 @@ instance : LawfulMonad (Comp ι ω s) := LawfulMonad.mk'
     · simp only [bind', h])
 
 /-- Running a `pure'` is `pure` -/
-@[simp] lemma prob_pure' (x : α) (o : I → Oracle ι ω) :
-    (pure' x : Comp ι ω s α).prob o = pure x := by
+@[simp] lemma prob_pure (x : α) (o : I → Oracle ι ω) :
+    (pure x : Comp ι ω s α).prob o = pure x := by
   simp only [prob, run, map_pure]
 
 -- The definition of `Comp.bind` as `simp` lemmas
-@[simp] lemma pure'_bind (x : α) (f : α → Comp ι ω s β) : (pure' x : Comp ι ω s α) >>= f = f x :=
+@[simp] protected lemma pure_bind (x : α) (f : α → Comp ι ω s β) : (pure x : Comp ι ω s α) >>= f = f x :=
   rfl
 @[simp] lemma sample'_bind (f : Prob (Fin n)) (g : Fin n → Comp ι ω s β) (h : β → Comp ι ω s γ) :
     sample' f g >>= h = .sample' f fun x ↦ g x >>= h := rfl
@@ -63,7 +66,7 @@ instance : LawfulMonad (Comp ι ω s) := LawfulMonad.mk'
     f <$> query' i m y g = query' i m y fun x ↦ f <$> (g x) := rfl
 
 -- The definition of `Comp.allow` as `simp` lemmas
-@[simp] lemma allow_pure' (x : α) (st : s ⊆ t) : (pure' x : Comp ι ω s α).allow st = pure x := rfl
+@[simp] lemma allow_pure (x : α) (st : s ⊆ t) : (pure x : Comp ι ω s α).allow st = pure x := rfl
 @[simp] lemma allow_sample' (f : Prob (Fin n)) (g : Fin n → Comp ι ω s α) (st : s ⊆ t) :
     (sample' f g).allow st = sample' f fun x ↦ (g x).allow st := rfl
 @[simp] lemma allow_query' (i : I) (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α) (st : s ⊆ t) :
@@ -76,10 +79,6 @@ instance : LawfulMonad (Comp ι ω s) := LawfulMonad.mk'
 /-!
 ## `Comp.run` commutes with various things
 -/
-
-@[simp] lemma run_pure' (x : α) (o : I → Oracle ι ω) :
-    (Comp.pure' x : Comp ι ω s α).run o = pure (x, fun _ ↦ 0) := by
-  simp only [Comp.run]
 
 @[simp] lemma run_pure (x : α) (o : I → Oracle ι ω) :
     (pure x : Comp ι ω s α).run o = pure (x, fun _ ↦ 0) := by
@@ -107,7 +106,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α)
 @[simp] lemma run_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Oracle ι ω) :
     (f >>= g).run o = f.run o >>= fun (x,c) ↦ (fun (y,c') ↦ (y, c + c')) <$> (g x).run o := by
   induction' f with x β f g' h j m y f h
-  · simp only [pure'_bind, run_pure', Pi.add_def, pure_bind, zero_add, Prod.mk.eta, id_map']
+  · simp only [pure_bind, run_pure, Pi.add_def, pure_bind, zero_add, Prod.mk.eta, id_map']
   · have e : ∀ x, bind' (g' x) g = g' x >>= g := fun _ ↦ rfl
     simp only [sample'_bind, run_sample', h, bind_assoc]
   · have e : ∀ h, bind' h g = h >>= g := fun _ ↦ rfl
@@ -119,7 +118,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α)
 @[simp] lemma run_allow (f : Comp ι ω s α) (st : s ⊆ t) (o : I → Oracle ι ω) :
     (f.allow st).run o = f.run o := by
   induction' f with x β f g h j _ y f h
-  · simp only [allow, run_pure, run_pure']
+  · simp only [allow, run_pure, run_pure]
   · simp only [run_sample', allow_sample', bind', h, Prob.bind_fin f (fun x ↦ (g x).run o)]
   · simp only [allow_query', run_query', h]
 
@@ -144,16 +143,6 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α)
 @[simp] lemma cost'_pure (x : α) (o : Oracle ι ω) (i : I) :
     (pure x : Comp ι ω s α).cost' o i = 0 := by
   simp only [cost', cost_pure]
-
-/-- `pure'` is free -/
-@[simp] lemma cost_pure' (x : α) (o : I → Oracle ι ω) (i : I) :
-    (Comp.pure' x : Comp ι ω s α).cost o i = 0 := by
-  simp only [cost, run, exp_pure, Nat.cast_zero]
-
-/-- `pure'` is free -/
-@[simp] lemma cost'_pure' (x : α) (o : Oracle ι ω) (i : I) :
-    (Comp.pure' x : Comp ι ω s α).cost' o i = 0 := by
-  simp only [cost', cost_pure']
 
 /-- `sample'` cost's is the expected follow-on cost -/
 @[simp] lemma cost_sample' (f : Prob (Fin n)) (g : Fin n → Comp ι ω s β) (o : I → Oracle ι ω)
@@ -196,7 +185,7 @@ lemma run_query' {i : I} (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α)
 lemma cost_of_not_mem (f : Comp ι ω s α) (o : I → Oracle ι ω) {i : I} (is : i ∉ s) :
     f.cost o i = 0 := by
   induction' f with x β f g h j js y f h
-  · simp only [cost_pure']
+  · simp only [cost_pure]
   · simp only [cost_sample', h, exp_const]
   · simp only [cost_query', h, ite_self, exp_const, add_zero]
     by_cases ij : i = j
@@ -207,7 +196,7 @@ lemma cost_of_not_mem (f : Comp ι ω s α) (o : I → Oracle ι ω) {i : I} (is
 lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Oracle ι ω) (i : I) :
     (f >>= g).cost o i = f.cost o i + (f.prob o).exp (fun x ↦ (g x).cost o i) := by
   induction' f with x β f g h j m y f h
-  · simp only [cost_pure', zero_add, prob_pure, exp_pure, prob_pure', bind, bind']
+  · simp only [cost_pure, zero_add, prob_pure, exp_pure, prob_pure, bind, bind']
   · simp only [bind, bind'] at h
     simp only [cost_sample', bind, bind', h, exp_add]
     apply congr_arg₂ _ rfl
@@ -228,7 +217,7 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
 @[simp] lemma cost_eq_zero {f : Comp ι ω s α} {i : I} (m : i ∉ s) (o : I → Oracle ι ω) :
     f.cost o i = 0 := by
   induction' f with x β f g h j mj y f h
-  · simp only [cost_pure']
+  · simp only [cost_pure]
   · simp only [cost_sample', h, exp_const]
   · simp only [cost_query', h, ite_self, exp_const, add_zero, ite_eq_right_iff, one_ne_zero]
     intro e; rw [e] at m; exact m mj
@@ -250,9 +239,6 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
 ## `Comp.prob` commutes with various things
 -/
 
-@[simp] lemma prob_pure (x : α) (o : I → Oracle ι ω) : (pure x : Comp ι ω s α).prob o = pure x := by
-  simp only [pure, prob_pure']
-
 @[simp] lemma prob_query' (i : I) (m : i ∈ s) (y : ι) (f : ω y → Comp ι ω s α)
     (o : I → Oracle ι ω) : (query' i m y f).prob o = (do let x ← o i y; (f x).prob o) := by
   simp only [prob, Prob.map_eq, run, bind_assoc]
@@ -266,7 +252,7 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
 @[simp] lemma prob_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Oracle ι ω) :
     (f >>= g).prob o = f.prob o >>= fun x ↦ (g x).prob o := by
   induction' f with x β f g h j m y f h
-  · simp only [pure'_bind, prob_pure', pure_bind]
+  · simp only [pure_bind, prob_pure, pure_bind]
   · simp only [sample'_bind, prob_sample', h, bind_assoc]
   · simp only [query'_bind, prob_query', h, bind_assoc]
 
@@ -296,7 +282,7 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
 @[simp] lemma prob_allow (f : Comp ι ω s α) (st : s ⊆ t) (o : I → Oracle ι ω) :
     (f.allow st).prob o = f.prob o := by
   induction' f with x β f g h j m y f h
-  · simp only [prob_pure', allow, prob_pure]
+  · simp only [prob_pure, allow, prob_pure]
   · simp only [allow, sample_bind, pure_bind, prob_sample, prob_sample', h]
   · simp only [allow, prob_query', h]
 
@@ -307,16 +293,13 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
 @[simp] lemma cost_allow (f : Comp ι ω s α) (st : s ⊆ t) (o : I → Oracle ι ω) (i : I) :
     (f.allow st).cost o i = f.cost o i := by
   induction' f with x β f g h j m y f h
-  · simp only [allow, cost_pure, cost_pure']
+  · simp only [allow, cost_pure, cost_pure]
   · simp only [allow, sample_bind, pure_bind, cost_sample, h, cost_sample']
   · simp only [allow, cost_query', h]
 
 @[simp] lemma cost_allow_all (f : Comp ι ω s α) (o : I → Oracle ι ω) (i : I) :
     (f.allow_all).cost o i = f.cost o i := by
   apply cost_allow
-
-@[simp] lemma allow_pure (x : α) (st : s ⊆ t) : (pure x : Comp ι ω s α).allow st = pure x := by
-  simp only [allow]
 
 @[simp] lemma allow_all_pure (x : α) : (pure x : Comp ι ω s α).allow_all = pure x := by
   simp only [allow_all, allow_pure]
@@ -325,7 +308,7 @@ lemma cost_bind (f : Comp ι ω s α) (g : α → Comp ι ω s β) (o : I → Or
     (f >>= g).allow st = f.allow st >>= fun x ↦ (g x).allow st := by
   have e : ∀ v, bind' v g = v >>= g := fun _ ↦ rfl
   induction' f with x β u v h j m y f h
-  · simp only [pure'_bind, allow, pure_bind]
+  · simp only [pure_bind, allow, pure_bind]
   · simp only [allow, e, h, sample'_bind]
   · simp only [allow, e, h, query'_bind]
 
@@ -401,7 +384,7 @@ variable [∀ x, Fintype (ω x)]
 @[simp] lemma worst_map (f : α → β) (g : Comp ι ω s α) :
     (f <$> g).worst = g.worst := by
   induction' g with x β u v h j m y f h
-  · simp only [worst, map_eq, pure'_bind]
+  · simp only [worst, map_eq, pure_bind]
   · simp only [worst, map_sample', h]
   · simp only [worst, map_query', h]
 

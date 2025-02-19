@@ -37,12 +37,12 @@ instance : LawfulMonad (DComp ι ω s) := LawfulMonad.mk'
     · simp only [bind', h])
 
 /-- Running a `pure'` unwraps it` -/
-@[simp] lemma value_pure' (x : α) (o : I → (x : ι) → ω x) :
-    (pure' x : DComp ι ω s α).value o = x := by
+@[simp] lemma value_pure (x : α) (o : I → (x : ι) → ω x) :
+    (pure x : DComp ι ω s α).value o = x := by
   simp only [value, run, map_pure]
 
 -- The definition of `DComp.bind` as `simp` lemmas
-@[simp] lemma pure'_bind (x : α) (f : α → DComp ι ω s β) : (pure' x : DComp ι ω s α) >>= f = f x :=
+@[simp] lemma pure_bind (x : α) (f : α → DComp ι ω s β) : (pure x : DComp ι ω s α) >>= f = f x :=
   rfl
 @[simp] lemma query'_bind (o : I) (m : o ∈ s) (y : ι) (f : ω y → DComp ι ω s α)
     (g : α → DComp ι ω s β) : query' o m y f >>= g = .query' o m y fun x ↦ (f x) >>= g := rfl
@@ -52,7 +52,7 @@ instance : LawfulMonad (DComp ι ω s) := LawfulMonad.mk'
     f <$> query' i m y g = query' i m y fun x ↦ f <$> (g x) := rfl
 
 -- The definition of `DComp.allow` as `simp` lemmas
-@[simp] lemma allow_pure' (x : α) (st : s ⊆ t) : (pure' x : DComp ι ω s α).allow st = pure x := rfl
+@[simp] lemma allow_pure (x : α) (st : s ⊆ t) : (pure x : DComp ι ω s α).allow st = pure x := rfl
 @[simp] lemma allow_query' (i : I) (m : i ∈ s) (y : ι) (f : ω y → DComp ι ω s α) (st : s ⊆ t) :
     (query' i m y f).allow st = query' i (st m) y fun x ↦ (f x).allow st := rfl
 

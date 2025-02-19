@@ -81,3 +81,11 @@ def allow (f : DComp ι ω s α) (st : s ⊆ t) : DComp ι ω t α := match f wi
 /-- Allow all oracles in a computation -/
 def allow_all (f : DComp ι ω s α) : DComp ι ω (@univ I) α :=
   f.allow (subset_univ s)
+
+/-- Custom recursor to use `pure` instead of `pure'`. -/
+@[induction_eliminator]
+def induction {motive : DComp ι ω s α → Sort*}
+    (pure : ∀ a, motive (pure a))
+    (query' : ∀ i hi x f, (∀ i, motive (f i)) → motive (query' i hi x f)) :
+    ∀ f, motive f :=
+  DComp.rec pure query'

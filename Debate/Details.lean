@@ -159,8 +159,8 @@ lemma debate_eq_transposed (o : BOracle ι) (alice : Alice ι) (bob : Bob ι) (v
       alices o alice f >>= fun (t,y) ↦ shim y <$> bobs o bob vera t := by
     intro α f
     induction f with
-    | pure' x =>
-      simp only [steps, alices, pure_bind, bobs, shim, map_eq, Comp.prob', Comp.prob_pure']
+    | pure x =>
+      simp only [steps, alices, pure_bind, bobs, shim, map_eq, Comp.prob', Comp.prob_pure]
     | sample' p g h =>
       simp only [steps, Comp.prob_sample', h, alices, bind_assoc]
     | query' _ _ y f h =>
